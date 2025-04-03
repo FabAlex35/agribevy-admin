@@ -1,5 +1,5 @@
 "use client"
-import { addVegetableAPI, deleteVegetableAPI, editVegetableAPI, getVegetableAPI } from '@/src/Components/Api';
+import { addVegetableAPI, editVegetableAPI, getVegetableAPI } from '@/src/Components/Api';
 import Loader from '@/src/Components/Loader';
 import Spinner from '@/src/Components/Spinner';
 import React, { useEffect, useRef, useState } from 'react'
@@ -10,6 +10,8 @@ import { FiAlertTriangle } from 'react-icons/fi';
 import { IoClose, IoCloseCircleOutline } from 'react-icons/io5';
 import { MdDelete } from "react-icons/md";
 import { RxCrossCircled } from 'react-icons/rx';
+import imageCompression from "browser-image-compression";
+
 const Vegetables = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true)
@@ -59,13 +61,13 @@ const Vegetables = () => {
             >
               <FaRegEdit />
             </button>
-            <button
+            {/* <button
               onClick={onDelete}
               className="btn btn-light btn-sm"
               aria-label="Delete"
             >
               <MdDelete />
-            </button>
+            </button> */}
           </div>
         </div>
         <div className="card-body">
@@ -92,10 +94,21 @@ const Vegetables = () => {
     setRemoveId(id)
   };
 
-  const handleClickOutside = (event) => {
-    if (offCanvasRef.current && !offCanvasRef.current.contains(event.target)) {
-        setIsOffCanvasOpen(false);
-    }
+//   const handleClickOutside = (event) => {
+//     if (offCanvasRef.current && !offCanvasRef.current.contains(event.target)) {
+//         setIsOffCanvasOpen(false);
+//     }
+// };
+
+const handleClickOutside = (event) => {
+  if (
+    offCanvasRef.current &&
+    !offCanvasRef.current.contains(event.target) &&
+    !event.target.closest(".offcanvas")
+  ) {
+    setIsOffCanvasOpen(false);
+    setIsOffCanvasOpenEdit(false);
+  }
 };
 
   useEffect(() => {
@@ -109,10 +122,20 @@ const Vegetables = () => {
 
   const onSubmitInventory = async (data) => {
     setSpin(true)
+    const options = {
+      maxSizeMB: 1, // Max size in MB
+      maxWidthOrHeight: 800, // Max width/height
+      useWebWorker: true,
+    };
+
     const formData = new FormData();
     formData.append("name", data.name)
     formData.append("tamil_name", data.tamil_name)
-    formData.append("file", data.file[0])
+    // formData.append("file", data.file[0])
+
+    const compressedFile = await imageCompression(data.file[0], options);
+                 
+    formData.append(`file`, compressedFile);
     
     const response = await addVegetableAPI(formData)
     if (response?.status === 200) {
@@ -171,39 +194,41 @@ const Vegetables = () => {
   const removeUserDetails = async () => {
     setLoading(true)
     setShowAlert(false)
-    const response = await deleteVegetableAPI(removeId)
-    if (response?.status === 200) {
-      setSuccessMsg(response?.message)
-      setTimeout(() => {
-        setRemoveId(null)
-        VegetableList()
-        setIsOffCanvasOpenEdit(false)
-        setShowAlert(false)
-        setSuccessMsg(null)
-      }, 2000)
-    }
-    else {
-      setErrMsg(response.message)
-      setLoading(false)
-      setTimeout(() => {
-        setErrMsg(null)
-      }, 2000)
-    }
+    // const response = await deleteVegetableAPI(removeId)
+    // if (response?.status === 200) {
+    //   setSuccessMsg(response?.message)
+    //   setTimeout(() => {
+    //     setRemoveId(null)
+    //     VegetableList()
+    //     setIsOffCanvasOpenEdit(false)
+    //     setShowAlert(false)
+    //     setSuccessMsg(null)
+    //   }, 2000)
+    // }
+    // else {
+    //   setErrMsg(response.message)
+    //   setLoading(false)
+    //   setTimeout(() => {
+    //     setErrMsg(null)
+    //   }, 2000)
+    // }
   }
 
 
   const VegetableList = async () => {
-    setLoading(true)
+    
     const response = await getVegetableAPI()
     if (response?.status === 200) {
       setVegetables(response?.data);
-      setLoading(false)
+      setTimeout(() => {
+        setLoading(false)
+      }, 2000);
     }
     else {
       setErrMsg(response?.message)
-      setLoading(false)
       setTimeout(() => {
         setErrMsg(null)
+        setLoading(false)
       }, 2000)
     }
   }
@@ -411,10 +436,6 @@ const Vegetables = () => {
                         <p className="err-dev">{errors2?.tamil_name?.message}</p>
                       </div>
 
-
-
-
-
                       <div className="form-group">
                         <div className="label-time">
                           <label>
@@ -430,8 +451,6 @@ const Vegetables = () => {
                         <p className="err-dev">{errors2?.file?.message}</p>
                       </div>
 
-
-
                       <div className="d-flex justify-content-center mt-4">
                         <button
                           type="submit"
@@ -445,8 +464,6 @@ const Vegetables = () => {
               </div>
             </div>
           </div>
-
-
         </>}
 
       <div className={`modal ${showAlert ? "show" : ""} col-5`}>

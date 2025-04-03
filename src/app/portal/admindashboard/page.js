@@ -1,27 +1,43 @@
 "use client"
 
 import { getDashboard } from '@/src/Components/Api';
+import Loader from '@/src/Components/Loader';
 import React, { useEffect, useState } from 'react';
 import {
     FaUsers, FaUserCheck, FaStore, FaShoppingBasket,
     FaCalendarAlt, FaBox, FaExclamationCircle, FaCreditCard
 } from 'react-icons/fa';
+import { IoClose } from 'react-icons/io5';
+import { RxCrossCircled } from 'react-icons/rx';
 
 const AdminDashboard = () => {
-    // Sample data - replace with actual data from your backend
     const [stats,setStats] = useState(null)
+    const [loading, setLoading] = useState(true);
+    const [errMsg, setErrMsg] = useState(null)
+
     const fetchDashboard = async() =>{
         const data = await getDashboard()
         if(data?.status === 200){
             setStats(data?.data)
+            setTimeout(()=>{
+                setLoading(false)
+            },2000)
+        }else {
+            setErrMsg(response.message)
+            setTimeout(() => {
+                setErrMsg(null)
+            }, 2000)
+            setLoading(false)
         }
     }
+
     useEffect(()=>{
         fetchDashboard()
     },[])
 
     return (
         <div className='app-container  min-vh-90'>
+            {loading ? <Loader /> : <>
             <div className="head pt-2 text-center mb-5">
                 <h2 className="primary-color">Dashboard</h2>
             </div>
@@ -179,6 +195,16 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             </div>
+            
+            <div className={errMsg === null ? "alert_net hide_net" : "alert_net show alert_war_bg"} >
+                <RxCrossCircled className='exclamation-circle' />
+                <span className="msg">{errMsg}</span>
+                <div className="close-btn close_war">
+                    <IoClose className='close_mark' size={26} />
+                </div>
+            </div>
+
+            </>}
         </div>
     );
 };

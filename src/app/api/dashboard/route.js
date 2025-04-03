@@ -1,21 +1,8 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/src/app/lib/Token';
 import { querys } from '@/src/app/lib/DbConnection';
 
 export async function GET(req) {
     try {
-        // Verify Authentication
-        const auth = await verifyToken(req);
-        if (!auth.isValid) {
-            return NextResponse.json({ message: 'Unauthorized', status: 401 }, { status: 401 });
-        }    
-
-        const { decoded } = auth;
-        const role = decoded?.role;
-        if (role !== 'admin') {
-            return NextResponse.json({ message: 'Forbidden', status: 403 }, { status: 403 });
-        }
-
         // Run all queries in parallel
         const [
             userCounts,
@@ -71,7 +58,6 @@ export async function GET(req) {
         }, { status: 200 });
 
     } catch (error) {
-        console.error("Database Error:", error);
-        return NextResponse.json({ message: 'Server Error', status: 500 }, { status: 500 });
+        return NextResponse.json({ message: 'Server Error', status: 500, data: error.message }, { status: 500 });
     }
 }

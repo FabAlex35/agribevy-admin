@@ -1,41 +1,60 @@
-import jwt from 'jsonwebtoken'
-import { NextResponse } from 'next/server';
+import cookie from "cookie";
+import { jwtVerify, decodeJwt, SignJWT } from 'jose';
 
-const SECRET_KEY = process.env.JWT_SECRET_KEY;
-const validUpto = process.env.JWT_EXPIRATION
+const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET_KEY);
+const REFRESH_SECRET_KEY = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET_KEY);
+
+// Convert string expiration times to valid formats (if needed)
+const validUpto = process.env.JWT_EXPIRATION || "5m";  
+const refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRATION || "10m";  
 
 // create token for user 
-export function generateToken(user) {
-    return jwt.sign(
-        { userId: user.user_id, mobile: user.user_mobile, role: user.user_role },
-        SECRET_KEY,
-        { expiresIn: validUpto }
-    );
+export async function generateToken(user) {
+    return await new SignJWT({
+        userId: user.user_id ?? user.userId, 
+        mobile: user.user_mobile ?? user.mobile,
+        role: user.user_role ?? user.role,
+    })
+        .setExpirationTime(validUpto) 
+        .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+        .sign(SECRET_KEY);
 }
+
+// Generate refresh token
+export async function generateRefreshToken(user) {
+    return await new SignJWT({
+        userId: user.user_id ?? user.userId,
+        mobile: user.user_mobile ?? user.mobile,
+        role: user.user_role ?? user.role,
+    })
+        .setExpirationTime(refreshTokenExpiry)
+        .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+        .sign(REFRESH_SECRET_KEY);
+}
+
 export function showRole(user){
     return user.user_role
 }
+
 export async function verifyToken(req) {
-    const cookies = req.cookies;
-    const token = cookies.get('adminToken')
+    const cookies = cookie.parse(req.headers.get("cookie") || "");
+    let token = cookies.adminAccToken;
+    let flag = false; 
     if (!token) {
-        return NextResponse.json({
-            message: 'Authentication required',
-            status: 400
-        });
-    } else {
-        const decoded = jwt.verify(token.value, process.env.JWT_SECRET_KEY);
-        const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-        // console.log(decoded.userId);
-        
-        // Check token expiry
-        if (decoded.exp < currentTime) {
-            return NextResponse.json({
-                message: 'Token has expired',
-                status: 401
-            }, { status: 401 });
+        token = cookies.adminRefToken;
+        flag = true;
+    }
+    let key = flag ? REFRESH_SECRET_KEY : SECRET_KEY;
+    
+    try {
+        let decoded = await jwtVerify(token, key);
+        return { decoded:decoded.payload, error: null }; 
+    } catch (error) {
+        let decoded = decodeJwt(token);
+        if (error.code === "ERR_JWT_EXPIRED") {
+            return { decoded:decoded, error: "Token expired" };
         }
 
-        return { isValid: true, decoded };
+        return { payload: null, error: "Invalid token", details: error.message };
     }
-} 
+}

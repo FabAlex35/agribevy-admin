@@ -23,11 +23,6 @@ const SubscriptionPlans = () => {
         }
     });
 
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: "features"
-    });
-
     const toggleOffCanvas = () => {
         setIsOffCanvasOpen(!isOffCanvasOpen);
         if (!isOffCanvasOpen) reset();
@@ -50,10 +45,10 @@ const SubscriptionPlans = () => {
 
     const watchDuration = watch("duration", 0);
 
-    const onSubmit = async (data) => {
+    const onSubmit = async (data) => {       
         const features = [
             `${data.duration * 30} days`,
-            ...data.features.map(f => f.value)
+            ...data.sub_feature.split("-").map(f => f)
         ];
         const newPlan = { ...data, features };
         setSpin(true);
@@ -77,15 +72,17 @@ const SubscriptionPlans = () => {
     };
 
     const subscriptionList = async () => {
-        setLoading(true);
         const response = await getPlanAPI();
         if (response?.status === 200) {
             setPlans(response?.data);
-            setLoading(false);
+            setTimeout(() => {
+                setErrMsg(null);
+                setLoading(false);
+            }, 2000);
         } else {
             setErrMsg(response?.message);
-            setLoading(false);
             setTimeout(() => {
+                setLoading(false);
                 setErrMsg(null);
             }, 2000);
         }
@@ -148,9 +145,9 @@ const SubscriptionPlans = () => {
                     }
 
                     {/* Offcanvas Menu */}
-                    <div 
-                        ref={offCanvasRef} 
-                        className={`offcanvas offcanvas-end ${isOffCanvasOpen ? 'show' : ''}`} 
+                    <div
+                        ref={offCanvasRef}
+                        className={`offcanvas offcanvas-end ${isOffCanvasOpen ? 'show' : ''}`}
                         style={{ visibility: isOffCanvasOpen ? 'visible' : 'hidden' }}
                     >
                         <div className="offcanvas-header">
@@ -167,14 +164,26 @@ const SubscriptionPlans = () => {
 
                                 <div className="form-group">
                                     <label>Months<sup>*</sup></label>
-                                    <input type="number" className="form-control" {...register("duration", { required: "Duration is required", min: 1 })} />
+                                    <input type="number" className="form-control"
+                                        {...register("duration", {
+                                            required: "Duration is required",
+                                            min: { value: 1, message: "Duration must be at least 1 month" },
+                                            max: { value: 12, message: "Duration cannot exceed 12 months" }
+                                        })}
+                                    />
                                     <p className="text-danger">{errors.duration?.message}</p>
                                 </div>
 
                                 <div className="form-group">
                                     <label>Price<sup>*</sup></label>
-                                    <input type="number" className="form-control" {...register("price", { required: "Price is required", min: 0 })} />
+                                    <input type="number" className="form-control" {...register("price", { required: "Price is required", min: { value: 1, message: "Price must be above 1" } })} />
                                     <p className="text-danger">{errors.price?.message}</p>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Feature<sup>*</sup></label>
+                                    <input type="text" className="form-control" placeholder='Features with "-" separator' {...register("sub_feature", { required: "Features is required" })} />
+                                    <p className="text-danger">{errors.sub_feature?.message}</p>
                                 </div>
 
                                 <div className="d-flex justify-content-center mt-4">
@@ -185,6 +194,21 @@ const SubscriptionPlans = () => {
                     </div>
                 </>
             }
+            <div className={successMsg === null ? "alert_net hide_net" : "alert_net show alert_suc_bg"}>
+                <FaCircleCheck className='exclamation-circle' />
+                <span className="msg">{successMsg}</span>
+                <div className="close-btn close_suc">
+                    <IoClose className='close_mark' size={26} />
+                </div>
+            </div>
+
+            <div className={errMsg === null ? "alert_net hide_net" : "alert_net show alert_war_bg"} >
+                <RxCrossCircled className='exclamation-circle' />
+                <span className="msg">{errMsg}</span>
+                <div className="close-btn close_war">
+                    <IoClose className='close_mark' size={26} />
+                </div>
+            </div>
         </div>
     );
 };

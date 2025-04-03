@@ -1,5 +1,5 @@
 import { querys } from "@/src/app/lib/DbConnection";
-import { generateToken, showRole } from "@/src/app/lib/Token";
+import { generateRefreshToken, generateToken, showRole } from "@/src/app/lib/Token";
 import bcrypt from 'bcrypt'
 import cookie from 'cookie';
 import { NextResponse } from "next/server";
@@ -35,9 +35,11 @@ export async function POST(req) {
 
         if (match) {
             // Generate authentication token
-            const token = generateToken(user);
+            const token = await generateToken(user);
+            const refresh = await generateRefreshToken(user);
+            console.log(token,refresh);
+            
             const role = showRole(user);
-            let isSetting;
            
             // Create JSON response
             const response = NextResponse.json({
@@ -47,20 +49,28 @@ export async function POST(req) {
             });
 
             // Set the token in a secure cookie
-            response.headers.append('Set-Cookie', cookie.serialize('adminToken', token, {
-                httpOnly: true,  // Ensures the cookie is only accessible via HTTP(S)
-                secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-                sameSite: 'Strict', // Mitigate CSRF attacks
-                maxAge: 24 * 60 * 60, // 30 minutes
-                path: '/', // Cookie is available site-wide
+            response.headers.append('Set-Cookie', cookie.serialize('adminAccToken', token, {
+                httpOnly: true, 
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'Strict', 
+                maxAge: 24 * 60 * 60, 
+                path: '/', 
+            }));
+
+            response.headers.append('Set-Cookie', cookie.serialize('adminRefToken', refresh, {
+                httpOnly: true, 
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'Strict', 
+                maxAge: 24 * 60 * 60, 
+                path: '/', 
             }));
 
             response.headers.append('Set-Cookie', cookie.serialize('adminrole', role, {
-                httpOnly: false,  // Ensures the cookie is only accessible via HTTP(S)
-                secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-                sameSite: 'Strict', // Mitigate CSRF attacks
-                maxAge: 24 * 60 * 60, // 30 minutes
-                path: '/', // Cookie is available site-wide
+                httpOnly: false, 
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'Strict', 
+                maxAge: 24 * 60 * 60, 
+                path: '/', 
             }));
 
             return response;
@@ -71,10 +81,9 @@ export async function POST(req) {
             }, { status: 400 });
         }
     } catch (error) {
-        console.log(error);
-
         return NextResponse.json({
             message: 'Server Error',
+            data: error.message,
             status: 500
         }, { status: 500 });
     }

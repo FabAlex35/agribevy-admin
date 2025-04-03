@@ -1,19 +1,9 @@
 import { querys } from "@/src/app/lib/DbConnection";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import { verifyToken } from "@/src/app/lib/Token";
 
 export async function POST(req) {
-    try {
-        const auth = await verifyToken(req);
-
-        if (!auth.isValid) {
-            return NextResponse.json({
-                message: 'Unauthorized',
-                status: 401
-            }, { status: 401 });
-        }
-
+    try {      
         const id = nanoid();
         const data = await req.json();
         const name=data.name
@@ -21,7 +11,7 @@ export async function POST(req) {
         const duration=data.duration
         const features=data.features
 
-        if (!name || !price || ! duration ||features.length===0) {
+        if (!name || !price || ! duration || features.length===0) {
             return NextResponse.json({
                 message: 'All fields are required',
                 status: 400
@@ -46,7 +36,7 @@ export async function POST(req) {
                 // Update the existing record to activate it
                 const updateResult = await querys({
                     query: 'UPDATE subscriptions SET subscription_status = 1, subscription_price=?,subscription_months=? , subscription_days=? ,  subscription_features=? WHERE subscription_name = ?',
-                    values: [price, duration,duration*30,features,name]
+                    values: [price, duration, duration*30, features,name]
                 });
 
                 if (updateResult.affectedRows > 0) {
@@ -81,8 +71,6 @@ export async function POST(req) {
             }
         }
     } catch (error) {
-        console.error('Server Error:', error);
-
         if (error.code === 'ER_DUP_ENTRY') {
             return NextResponse.json({
                 message: 'Subscription plan already exists',
@@ -92,6 +80,7 @@ export async function POST(req) {
 
         return NextResponse.json({
             message: 'Server Error',
+            data: error.message,
             status: 500
         }, { status: 500 });
     }
@@ -99,19 +88,7 @@ export async function POST(req) {
 
 export async function GET(req) {
     try {
-        const auth = await verifyToken(req)
-
-        if (!auth.isValid) {
-            return NextResponse.json({
-                message: 'Unauthorized',
-                status: 401
-            }, { status: 401 });
-        }
-
-        const { decoded } = auth
-        const role = decoded.role
-
-        if (role == 'admin') {
+       
             const rows = await querys({
                 query: `SELECT * FROM subscriptions WHERE subscription_status=1`,
                 values: []
@@ -129,18 +106,12 @@ export async function GET(req) {
                     status: 404
                 }, { status: 404 });
             }
-        } else {
-            return NextResponse.json({
-                message: 'Unauthorized',
-                status: 403
-            }, { status: 403 });
-        }
+     
 
     } catch (error) {
-        console.log(error);
-
         return NextResponse.json({
             message: 'Server Error',
+            data: error.message,
             status: 500
         }, { status: 500 });
     }
